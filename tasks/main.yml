@@ -1,0 +1,13 @@
+---
+
+- name: Enable ssh password auth
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: '.*[pP]assword[aA]uthentication no.*'
+    replace: 'PasswordAuthentication yes'
+    backup: no
+
+- name: Restart the sshd service
+  service:
+    name: sshd
+    state: restarted
