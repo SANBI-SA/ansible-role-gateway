@@ -1,0 +1,131 @@
+---
+
+- name: Make SSH changes
+  block:
+  - name: Ensure SSH password auth
+    replace:
+      path: /etc/ssh/sshd_config
+      regexp: '.*[pP]assword[aA]uthentication no.*'
+      replace: 'PasswordAuthentication yes'
+      backup: no
+    register: ssh_conf
+
+  - name: Ensure UseDNS off
+    replace:
+      path: /etc/ssh/sshd_config
+      regexp: '.*[uU]seDNS.*'
+      replace: 'UseDNS no'
+      backup: no
+    register: ssh_dns_conf
+
+  - name: Restart the sshd service
+    service:
+      name: sshd
+      state: restarted
+    when: ssh_conf.changed or ssh_dns_conf.changed
+
+- name: Installing Fail2ban
+  block:
+  - name: Install the neccesary packages
+    apt:
+      name: '{{ software_list }}'
+      state: present
+      update_cache: yes
+  
+  - name: Template out Fail2ban files
+    template:
+      src: "{{ role_path }}/files/{{ item }}.j2"
+      dest: "/etc/fail2ban/{{ item }}.local"
+    loop:
+      - fail2ban
+      - jail
+    register: template_files
+
+  - name: Restart the fail2ban service
+    service:
+      name: fail2ban
+      state: restarted
+    when: template_files.changed
+
+- name: System Tweaks
+  block:
+  - name: Apply various sysctl tweaks
+    sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        state: present
+        sysctl_file: /etc/sysctl.d/99-sysctl.conf
+    loop:
+      - { name: 'net.ipv4.conf.all.rp_filter', value: 1 }
+      - { name: 'net.ipv4.conf.default.rp_filter', value: 1 }
+      - { name: 'net.ipv4.icmp_echo_ignore_broadcasts', value: 1 }
+      - { name: 'net.ipv4.conf.all.accept_source_route', value: 0 }
+      - { name: 'net.ipv6.conf.all.accept_source_route', value: 0 }
+      - { name: 'net.ipv4.conf.default.accept_source_route', value: 0 }
+      - { name: 'net.ipv6.conf.default.accept_source_route', value: 0 }
+      - { name: 'net.ipv4.conf.all.send_redirects', value: 0 }
+      - { name: 'net.ipv4.conf.default.send_redirects', value: 0 }
+      - { name: 'net.ipv4.tcp_syncookies', value: 1 }
+      - { name: 'net.ipv4.tcp_max_syn_backlog', value: 2048 }
+      - { name: 'net.ipv4.tcp_synack_retries', value: 2 }
+      - { name: 'net.ipv4.tcp_syn_retries', value: 5 }
+      - { name: 'net.ipv4.conf.all.log_martians', value: 1 }
+      - { name: 'net.ipv4.icmp_ignore_bogus_error_responses', value: 1 }
+      - { name: 'net.ipv4.conf.all.accept_redirects', value: 0 }
+      - { name: 'net.ipv6.conf.all.accept_redirects', value: 0 }
+      - { name: 'net.ipv4.conf.default.accept_redirects', value: 0 }
+      - { name: 'net.ipv6.conf.default.accept_redirects', value: 0 }
+      - { name: 'net.ipv4.icmp_echo_ignore_all', value: 1 }
+      - { name: 'net.ipv4.netfilter.ip_conntrack_max', value: 103728 }
+      - { name: 'net.ipv4.tcp_rmem', value: '4096 87380 8388608' }
+      - { name: 'net.ipv4.tcp_wmem', value: '4096 87380 8388608' }
+      - { name: 'net.core.rmem_max', value: 8388608 }
+      - { name: 'net.core.wmem_max', value: 8388608 }
+      - { name: 'net.core.netdev_max_backlog', value: 5000 }
+      - { name: 'net.ipv4.tcp_window_scaling', value: 1 }
+        
+  - name: Apply sysctl changes
+    shell: sysctl --system
+    changed_when: False
+
+- name: Change MOTDs
+  block:
+
+    - name: Create necessary directories
+      file:
+        path: "/etc/update-motd.d/parts"
+        state: directory
+
+    - name: Disable default MOTDs
+      file:
+        path: /etc/update-motd.d/
+        mode: '0644'
+        recurse: True
+      changed_when: False
+    
+    - file:
+        path: "/etc/update-motd.d/{{ item }}"
+        mode: 0755
+      loop:
+        - '.'
+        - parts
+      changed_when: False
+    
+    - name: Ensure motd files
+      template:
+        src: "{{ role_path }}/files/{{ item.source }}"
+        dest: "/etc/update-motd.d/{{ item.destination }}"
+      loop:
+        - { source: 'motd.sh', destination: './01-custom'}
+        - { source: 'company_logo.txt', destination: './sanbi.txt'}
+        - { source: 'motd_script.sh', destination: './parts/sysinfo.sh'}
+
+    - name: Change permissions
+      file:
+        path: /etc/update-motd.d/{{ item }}
+        mode: "0755"
+      loop:
+        - "01-custom"
+        - "parts/sysinfo.sh"
+      changed_when: False
+      

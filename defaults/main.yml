@@ -1,0 +1,9 @@
+company_name: SANBI
+remote_server_name: Tunnel
+
+fail2ban_ignore_ip_list: "{{ lookup('hashi_vault', 'secret=secret/ansible/tunnel:ip_whitelist')}}"
+
+software_list:
+  - fail2ban
+  - sendmail
+  - dnsutils

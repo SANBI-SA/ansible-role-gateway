@@ -1,0 +1,11 @@
+[DEFAULT]
+ignoreip = {{ fail2ban_ignore_ip_list }}
+bantime = 1h
+findtime = 10m
+maxretry = 5
+
+[sshd]
+enabled = true
+port = 22
+filter = sshd
+logpath = /var/log/auth.log
