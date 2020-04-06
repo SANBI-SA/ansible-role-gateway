@@ -1,0 +1,16 @@
+---
+dependencies: []
+
+galaxy_info:
+  author: Eugene de Beste
+  description: Configures the SSH bastion box for SANBI-UWC
+  license: MIT
+  min_ansible_version: 2.7
+  platforms:
+  - name: Ubuntu
+    versions:
+    - 18.04 (Bionic Beaver)
+  galaxy_tags:
+    - debian
+    - ubuntu
+    - ssh
