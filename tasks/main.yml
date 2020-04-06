@@ -2,27 +2,23 @@
 
 - name: Make SSH changes
   block:
-  - name: Ensure SSH password auth
-    replace:
-      path: /etc/ssh/sshd_config
-      regexp: '.*[pP]assword[aA]uthentication no.*'
-      replace: 'PasswordAuthentication yes'
-      backup: no
-    register: ssh_conf
+    - name: Ensure SSH password auth
+      replace:
+        path: /etc/ssh/sshd_config
+        regexp: '.*[pP]assword[aA]uthentication no.*'
+        replace: 'PasswordAuthentication yes'
+        backup: no
+      register: ssh_conf
 
-  - name: Ensure UseDNS off
-    replace:
-      path: /etc/ssh/sshd_config
-      regexp: '.*[uU]seDNS.*'
-      replace: 'UseDNS no'
-      backup: no
-    register: ssh_dns_conf
-
-  - name: Restart the sshd service
-    service:
-      name: sshd
-      state: restarted
-    when: ssh_conf.changed or ssh_dns_conf.changed
+    - name: Ensure UseDNS off
+      replace:
+        path: /etc/ssh/sshd_config
+        regexp: '.*[uU]seDNS.*'
+        replace: 'UseDNS no'
+        backup: no
+      register: ssh_dns_conf
+  notify:
+  - restart sshd
 
 - name: Installing Fail2ban
   block:
@@ -127,5 +123,5 @@
       loop:
         - "01-custom"
         - "parts/sysinfo.sh"
-      changed_when: False
+#      changed_when: False
       
